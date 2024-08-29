@@ -1,7 +1,9 @@
 package com.example.chat_project.chat;
 
+import com.example.chat_project.chat_status.ChatStatus;
 import com.example.chat_project.user.ChatUser;
 import com.example.chat_project.user.UserRepository;
+import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.handler.annotation.SendTo;
@@ -17,12 +19,17 @@ public class ChatController {
         this.userRepository = userRepository;
     }
 
-    @MessageMapping("/chat.addUser")
-    @SendTo("/topic/public")
-    public ChatMessage addUser(@Payload ChatMessage message, SimpMessageHeaderAccessor headerAccessor) {
-        headerAccessor.getSessionAttributes().put("username", message.getSender());
-        userRepository.save(new ChatUser(message.getSender()));
-        return message;
+    @MessageMapping("/chat.addUser/{id}")
+    @SendTo("/topic/public/{id}")
+    public ChatStatus addUser(@Payload ChatMessage message, @DestinationVariable("id") Long id, 
+                              SimpMessageHeaderAccessor headerAccessor) {
+        String sender = message.getSender();
+        if (userRepository.findUserByUsername(sender) == null) {
+            headerAccessor.getSessionAttributes().put("username", sender);
+            userRepository.save(new ChatUser(sender));
+            return ChatStatus.USER_ADDED;
+        }
+        return ChatStatus.USER_NAME_INVALID;
     }
 
 }

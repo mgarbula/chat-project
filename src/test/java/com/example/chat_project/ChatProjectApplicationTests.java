@@ -2,6 +2,7 @@ package com.example.chat_project;
 
 import com.example.chat_project.chat.ChatMessage;
 import com.example.chat_project.chat.MessageType;
+import com.example.chat_project.chat_status.ChatStatus;
 import com.example.chat_project.user.ChatUser;
 import com.example.chat_project.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,7 +42,7 @@ class ChatProjectApplicationTests {
 	private Integer port;
 	private WebSocketStompClient stompClient;
 	private String url;
-	private BlockingQueue<ChatMessage> queue = new ArrayBlockingQueue<>(1);
+	private BlockingQueue<ChatStatus> queue = new ArrayBlockingQueue<>(1);
 	private final String topicPublic = "/topic/public";
 	private final String addUser = "/app/chat.addUser";
 	
@@ -77,17 +78,20 @@ class ChatProjectApplicationTests {
 	@Test
 	@DirtiesContext
 	void shouldAddUserToSession() throws ExecutionException, InterruptedException, TimeoutException {
-		this.stompClient.setMessageConverter(new MappingJackson2MessageConverter());
-		
-		StompSession session = createSession();
-		StompSession.Subscription subscription = session.subscribe(topicPublic, new ChatStompFrameHandler());
-		assertNotNull(subscription);	
-		
+		String newUsername = "NewUser";
+		int newUsernameHash = newUsername.hashCode();
 		ChatMessage newUserMessage = ChatMessage.builder()
-				.sender("NewUser")
+				.sender(newUsername)
 				.type(MessageType.JOIN)
 				.build();
-		session.send(addUser, newUserMessage);
+		
+		this.stompClient.setMessageConverter(new MappingJackson2MessageConverter());
+		StompSession session = createSession();
+		StompSession.Subscription subscription = session.subscribe(topicPublic + "/" + newUsernameHash, 
+				new ChatStatusStompFrameHandler());
+		assertNotNull(subscription);
+		
+		session.send(addUser + "/" + newUsernameHash, newUserMessage);
 		
 		// maybe not the best approach. I sleep for 1 second
 		// because I need to wait for addUser() method to execute.
@@ -95,9 +99,30 @@ class ChatProjectApplicationTests {
 		Thread.sleep(1000);
 		await()
 				.atMost(1, TimeUnit.SECONDS)
-				.untilAsserted(() -> assertEquals("NewUser", queue.poll().getSender()));
+				.untilAsserted(() -> assertEquals(ChatStatus.USER_ADDED, queue.poll()));
 		
 		assertThat(repository.findUserByUsername("NewUser")).isNotNull();
+	}
+	
+	@Test
+	@DirtiesContext
+	void shouldNotAddUserWithExistingUsername() throws ExecutionException, InterruptedException, TimeoutException {
+		String newUsername = "user";
+		int newUsernameHash = newUsername.hashCode();
+		ChatMessage newUserMessage = ChatMessage.builder()
+				.sender(newUsername)
+				.type(MessageType.JOIN)
+				.build();
+		
+		this.stompClient.setMessageConverter(new MappingJackson2MessageConverter());
+		StompSession session = createSession();
+		StompSession.Subscription subscription = session.subscribe(topicPublic + "/" + newUsernameHash, new ChatStatusStompFrameHandler());
+		
+		session.send(addUser + "/" + newUsernameHash, newUserMessage);
+		Thread.sleep(1000);
+		await()
+				.atMost(1, TimeUnit.SECONDS)
+				.untilAsserted(() -> assertEquals(ChatStatus.USER_NAME_INVALID, queue.poll()));
 	}
 
 	private StompSession createSession() throws ExecutionException, InterruptedException, TimeoutException {
@@ -107,16 +132,16 @@ class ChatProjectApplicationTests {
 				.get(1, TimeUnit.SECONDS);
 	}
 
-	private class ChatStompFrameHandler implements StompFrameHandler {
+	private class ChatStatusStompFrameHandler implements StompFrameHandler {
 
 		@Override
 		public Type getPayloadType(StompHeaders headers) {
-			return ChatMessage.class;
+			return ChatStatus.class;
 		}
 
 		@Override
 		public void handleFrame(StompHeaders headers, Object payload) {
-			queue.add((ChatMessage) payload);
+			queue.add((ChatStatus) payload);
 		}
 	}
 
