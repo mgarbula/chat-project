@@ -47,6 +47,8 @@ class ChatProjectApplicationTests {
 	private BlockingQueue<ChatStatus> queue = new ArrayBlockingQueue<>(1);
 	private final String topicPublic = "/topic/public";
 	private final String addUser = "/app/chat.addUser";
+	private final String sendMessage = "/app/chat.sendMessage";
+	private BlockingQueue<ChatMessage> messagesQueue = new ArrayBlockingQueue<>(1);
 	
 	@Autowired
 	private UserRepository repository;
@@ -141,6 +143,47 @@ class ChatProjectApplicationTests {
 				.atMost(1, TimeUnit.SECONDS)
 				.untilAsserted(() -> assertEquals(ChatStatus.USER_NAME_INVALID, queue.poll()));
 	}
+	
+	@Test
+	@DirtiesContext
+	void shouldSendMessage() throws ExecutionException, InterruptedException, TimeoutException {
+		String sender = "sender";
+		ResponseEntity<Long> response = restTemplate
+				.getForEntity("/", Long.class);
+		Long senderId = response.getBody();
+		
+		String receiver = "receiver";
+		response = restTemplate
+				.getForEntity("/", Long.class);
+		Long receiverId = response.getBody();
+		
+		this.stompClient.setMessageConverter(new MappingJackson2MessageConverter());
+		StompSession session = createSession();
+		
+		session.subscribe(topicPublic + "/" + senderId, new ChatStatusStompFrameHandler());
+		session.subscribe(topicPublic + "/" + receiverId,
+				new ChatStompFrameHandler());
+		
+		ChatMessage message = ChatMessage.builder()
+				.sender(sender)
+				.type(MessageType.CHAT)
+				.content("Hello!")
+				.build();
+		
+		StompHeaders headers = new StompHeaders();
+		headers.setDestination(sendMessage + "/" + senderId);
+		headers.add("destinationId", Long.toString(receiverId));
+		session.send(headers, message);
+		
+		Thread.sleep(1000);
+		await()
+				.atMost(1, TimeUnit.SECONDS)
+				.untilAsserted(() -> assertEquals("Hello!", messagesQueue.poll().getContent()));
+		
+		await()
+				.atMost(1, TimeUnit.SECONDS)
+				.untilAsserted(() -> assertEquals(ChatStatus.MESSAGE_SENT, queue.poll()));
+	}
 
 	private StompSession createSession() throws ExecutionException, InterruptedException, TimeoutException {
 		return this.stompClient
@@ -159,6 +202,19 @@ class ChatProjectApplicationTests {
 		@Override
 		public void handleFrame(StompHeaders headers, Object payload) {
 			queue.add((ChatStatus) payload);
+		}
+	}
+	
+	private class ChatStompFrameHandler implements StompFrameHandler {
+		
+		@Override
+		public Type getPayloadType(StompHeaders headers) {
+			return ChatMessage.class;
+		}
+		
+		@Override
+		public void handleFrame(StompHeaders headers, Object payload) {
+			messagesQueue.add((ChatMessage) payload);
 		}
 	}
 
