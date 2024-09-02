@@ -9,7 +9,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.simp.stomp.StompFrameHandler;
 import org.springframework.messaging.simp.stomp.StompHeaders;
@@ -48,6 +50,8 @@ class ChatProjectApplicationTests {
 	
 	@Autowired
 	private UserRepository repository;
+	@Autowired
+	TestRestTemplate restTemplate;
 	
 	@BeforeEach
 	void setup() {
@@ -67,6 +71,13 @@ class ChatProjectApplicationTests {
 		repository.save(chatUser2);
 		assertThat(chatUser2).isEqualTo(repository.findUserById(2L));
 	}
+	
+	@Test
+	void shouldReturnId() {
+		ResponseEntity<Long> response = restTemplate
+				.getForEntity("/", Long.class);
+		assertThat(response.getBody()).isNotNull();
+	}
 
 	@Test
 	void shouldConnect() throws ExecutionException, InterruptedException, TimeoutException {
@@ -79,7 +90,10 @@ class ChatProjectApplicationTests {
 	@DirtiesContext
 	void shouldAddUserToSession() throws ExecutionException, InterruptedException, TimeoutException {
 		String newUsername = "NewUser";
-		int newUsernameHash = newUsername.hashCode();
+		ResponseEntity<Long> response = restTemplate
+				.getForEntity("/", Long.class);
+		Long newUserId = response.getBody();
+		
 		ChatMessage newUserMessage = ChatMessage.builder()
 				.sender(newUsername)
 				.type(MessageType.JOIN)
@@ -87,11 +101,11 @@ class ChatProjectApplicationTests {
 		
 		this.stompClient.setMessageConverter(new MappingJackson2MessageConverter());
 		StompSession session = createSession();
-		StompSession.Subscription subscription = session.subscribe(topicPublic + "/" + newUsernameHash, 
+		StompSession.Subscription subscription = session.subscribe(topicPublic + "/" + newUserId, 
 				new ChatStatusStompFrameHandler());
 		assertNotNull(subscription);
 		
-		session.send(addUser + "/" + newUsernameHash, newUserMessage);
+		session.send(addUser + "/" + newUserId, newUserMessage);
 		
 		// maybe not the best approach. I sleep for 1 second
 		// because I need to wait for addUser() method to execute.
@@ -108,7 +122,10 @@ class ChatProjectApplicationTests {
 	@DirtiesContext
 	void shouldNotAddUserWithExistingUsername() throws ExecutionException, InterruptedException, TimeoutException {
 		String newUsername = "user";
-		int newUsernameHash = newUsername.hashCode();
+		ResponseEntity<Long> response = restTemplate
+				.getForEntity("/", Long.class);
+		Long newUserId = response.getBody();
+		
 		ChatMessage newUserMessage = ChatMessage.builder()
 				.sender(newUsername)
 				.type(MessageType.JOIN)
@@ -116,9 +133,9 @@ class ChatProjectApplicationTests {
 		
 		this.stompClient.setMessageConverter(new MappingJackson2MessageConverter());
 		StompSession session = createSession();
-		StompSession.Subscription subscription = session.subscribe(topicPublic + "/" + newUsernameHash, new ChatStatusStompFrameHandler());
+		StompSession.Subscription subscription = session.subscribe(topicPublic + "/" + newUserId, new ChatStatusStompFrameHandler());
 		
-		session.send(addUser + "/" + newUsernameHash, newUserMessage);
+		session.send(addUser + "/" + newUserId, newUserMessage);
 		Thread.sleep(1000);
 		await()
 				.atMost(1, TimeUnit.SECONDS)
