@@ -80,7 +80,7 @@ class ChatProjectApplicationTests {
 	@Test
 	void shouldReturnId() {
 		ResponseEntity<Long> response = restTemplate
-				.getForEntity("/", Long.class);
+				.getForEntity("/getId", Long.class);
 		assertThat(response.getBody()).isNotNull();
 	}
 
@@ -96,7 +96,7 @@ class ChatProjectApplicationTests {
 	void shouldAddUserToSession() throws ExecutionException, InterruptedException, TimeoutException {
 		String newUsername = "NewUser";
 		ResponseEntity<Long> response = restTemplate
-				.getForEntity("/", Long.class);
+				.getForEntity("/getId", Long.class);
 		Long newUserId = response.getBody();
 		
 		ChatMessage newUserMessage = ChatMessage.builder()
@@ -128,7 +128,7 @@ class ChatProjectApplicationTests {
 	void shouldNotAddUserWithExistingUsername() throws ExecutionException, InterruptedException, TimeoutException {
 		String newUsername = "user";
 		ResponseEntity<Long> response = restTemplate
-				.getForEntity("/", Long.class);
+				.getForEntity("/getId", Long.class);
 		Long newUserId = response.getBody();
 		
 		ChatMessage newUserMessage = ChatMessage.builder()
@@ -152,12 +152,12 @@ class ChatProjectApplicationTests {
 	void shouldSendMessage() throws ExecutionException, InterruptedException, TimeoutException {
 		String sender = "sender";
 		ResponseEntity<Long> response = restTemplate
-				.getForEntity("/", Long.class);
+				.getForEntity("/getId", Long.class);
 		Long senderId = response.getBody();
 		
 		String receiver = "receiver";
 		response = restTemplate
-				.getForEntity("/", Long.class);
+				.getForEntity("/getId", Long.class);
 		Long receiverId = response.getBody();
 		
 		this.stompClient.setMessageConverter(new MappingJackson2MessageConverter());

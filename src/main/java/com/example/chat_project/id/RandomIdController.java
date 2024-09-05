@@ -1,6 +1,5 @@
 package com.example.chat_project.id;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -10,7 +9,7 @@ import java.util.List;
 import java.util.Random;
 
 @RestController
-@RequestMapping("/")
+@RequestMapping("/getId")
 public class RandomIdController {
     
     private List<Long> ids = new ArrayList<>();
