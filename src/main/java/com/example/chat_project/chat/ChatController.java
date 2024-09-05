@@ -1,6 +1,8 @@
 package com.example.chat_project.chat;
 
 import com.example.chat_project.chat_status.ChatStatus;
+import com.example.chat_project.message.Message;
+import com.example.chat_project.message.MessageRepository;
 import com.example.chat_project.user.ChatUser;
 import com.example.chat_project.user.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,6 +13,9 @@ import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.stereotype.Controller;
+
+import java.sql.Timestamp;
+import java.time.Instant;
 
 @Controller
 public class ChatController {
@@ -30,7 +35,7 @@ public class ChatController {
         String sender = message.getSender();
         if (userRepository.findUserByUsername(sender) == null) {
             headerAccessor.getSessionAttributes().put("username", sender);
-            userRepository.save(new ChatUser(sender));
+            userRepository.save(new ChatUser(sender, id));
             return ChatStatus.USER_ADDED;
         }
         return ChatStatus.USER_NAME_INVALID;

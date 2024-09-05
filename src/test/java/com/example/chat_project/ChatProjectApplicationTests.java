@@ -66,10 +66,10 @@ class ChatProjectApplicationTests {
 	@Test
 	@DirtiesContext
 	void testDatabase() {
-		ChatUser chatUser = new ChatUser(1L, "user");
+		ChatUser chatUser = new ChatUser(1L, "user", 1234L);
 		assertThat(chatUser).isEqualTo(repository.findUserById(1L));
 		
-		ChatUser chatUser2 = new ChatUser("newUser");
+		ChatUser chatUser2 = new ChatUser("newUser", 5678L);
 		repository.save(chatUser2);
 		assertThat(chatUser2).isEqualTo(repository.findUserById(2L));
 	}

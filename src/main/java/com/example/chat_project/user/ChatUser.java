@@ -23,5 +23,7 @@ public class ChatUser {
     Long id;
     @NonNull
     String username;
+    @NonNull
+    Long randomId;
 }
 
