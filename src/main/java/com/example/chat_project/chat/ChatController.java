@@ -21,11 +21,13 @@ import java.time.Instant;
 public class ChatController {
     
     private final UserRepository userRepository;
+    private final MessageRepository messageRepository;
     @Autowired
     private SimpMessageSendingOperations messageTemplate;
     
-    public ChatController(UserRepository userRepository) {
+    public ChatController(UserRepository userRepository, MessageRepository messageRepository) {
         this.userRepository = userRepository;
+        this.messageRepository = messageRepository;
     }
 
     @MessageMapping("/chat.addUser/{id}")
@@ -47,6 +49,13 @@ public class ChatController {
                             SimpMessageHeaderAccessor headerAccessor) {
         Long idTo = Long.valueOf(headerAccessor.getNativeHeader("destinationId").get(0));
         messageTemplate.convertAndSend("/topic/public/" + idTo, message);
+        Message messageToSave = Message.builder()
+                .sender(id)
+                .receiver(idTo)
+                .content(message.getContent())
+                .times(new Timestamp(Instant.now().toEpochMilli()))
+                .build();
+        messageRepository.save(messageToSave);
         return ChatStatus.MESSAGE_SENT;
     }
 

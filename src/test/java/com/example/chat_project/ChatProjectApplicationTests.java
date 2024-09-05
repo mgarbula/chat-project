@@ -3,6 +3,7 @@ package com.example.chat_project;
 import com.example.chat_project.chat.ChatMessage;
 import com.example.chat_project.chat.MessageType;
 import com.example.chat_project.chat_status.ChatStatus;
+import com.example.chat_project.message.MessageRepository;
 import com.example.chat_project.user.ChatUser;
 import com.example.chat_project.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -52,6 +53,8 @@ class ChatProjectApplicationTests {
 	
 	@Autowired
 	private UserRepository repository;
+	@Autowired
+	private MessageRepository messageRepository;
 	@Autowired
 	TestRestTemplate restTemplate;
 	
@@ -183,6 +186,8 @@ class ChatProjectApplicationTests {
 		await()
 				.atMost(1, TimeUnit.SECONDS)
 				.untilAsserted(() -> assertEquals(ChatStatus.MESSAGE_SENT, queue.poll()));
+		
+		assertThat(messageRepository.findAllBySenderAndReceiver(senderId, receiverId).size()).isEqualTo(1);
 	}
 
 	private StompSession createSession() throws ExecutionException, InterruptedException, TimeoutException {
