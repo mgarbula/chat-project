@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.simp.stomp.StompFrameHandler;
@@ -34,7 +35,6 @@ import java.util.concurrent.TimeoutException;
 
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -79,8 +79,12 @@ class ChatProjectApplicationTests {
 	
 	@Test
 	void shouldReturnId() {
+		ChatMessage newUserMessage = ChatMessage.builder()
+				.sender("newUser")
+				.type(MessageType.JOIN)
+				.build();
 		ResponseEntity<Long> response = restTemplate
-				.getForEntity("/getId", Long.class);
+				.postForEntity("/register", newUserMessage, Long.class);
 		assertThat(response.getBody()).isNotNull();
 	}
 
@@ -93,71 +97,57 @@ class ChatProjectApplicationTests {
 	
 	@Test
 	@DirtiesContext
-	void shouldAddUserToSession() throws ExecutionException, InterruptedException, TimeoutException {
+	void shouldAddUserToSession() {
 		String newUsername = "NewUser";
-		ResponseEntity<Long> response = restTemplate
-				.getForEntity("/getId", Long.class);
-		Long newUserId = response.getBody();
 		
 		ChatMessage newUserMessage = ChatMessage.builder()
 				.sender(newUsername)
 				.type(MessageType.JOIN)
 				.build();
 		
-		this.stompClient.setMessageConverter(new MappingJackson2MessageConverter());
-		StompSession session = createSession();
-		StompSession.Subscription subscription = session.subscribe(topicPublic + "/" + newUserId, 
-				new ChatStatusStompFrameHandler());
-		assertNotNull(subscription);
+		ResponseEntity<Long> response = restTemplate
+				.postForEntity("/register", newUserMessage, Long.class);
 		
-		session.send(addUser + "/" + newUserId, newUserMessage);
-		
-		// maybe not the best approach. I sleep for 1 second
-		// because I need to wait for addUser() method to execute.
-		// await() waits for execution, but poll() executes immediately
-		Thread.sleep(1000);
-		await()
-				.atMost(1, TimeUnit.SECONDS)
-				.untilAsserted(() -> assertEquals(ChatStatus.USER_ADDED, queue.poll()));
-		
-		assertThat(repository.findUserByUsername("NewUser")).isNotNull();
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+		assertThat(response.getBody()).isNotNull();
 	}
 	
 	@Test
 	@DirtiesContext
-	void shouldNotAddUserWithExistingUsername() throws ExecutionException, InterruptedException, TimeoutException {
+	void shouldNotAddUserWithExistingUsername() {
 		String newUsername = "user";
-		ResponseEntity<Long> response = restTemplate
-				.getForEntity("/getId", Long.class);
-		Long newUserId = response.getBody();
 		
 		ChatMessage newUserMessage = ChatMessage.builder()
 				.sender(newUsername)
 				.type(MessageType.JOIN)
 				.build();
 		
-		this.stompClient.setMessageConverter(new MappingJackson2MessageConverter());
-		StompSession session = createSession();
-		StompSession.Subscription subscription = session.subscribe(topicPublic + "/" + newUserId, new ChatStatusStompFrameHandler());
+		ResponseEntity<Long> response = restTemplate
+				.postForEntity("/register", newUserMessage, Long.class);
 		
-		session.send(addUser + "/" + newUserId, newUserMessage);
-		Thread.sleep(1000);
-		await()
-				.atMost(1, TimeUnit.SECONDS)
-				.untilAsserted(() -> assertEquals(ChatStatus.USER_NAME_INVALID, queue.poll()));
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
 	}
 	
 	@Test
 	@DirtiesContext
 	void shouldSendMessage() throws ExecutionException, InterruptedException, TimeoutException {
 		String sender = "sender";
+		ChatMessage senderMessage = ChatMessage.builder()
+				.sender(sender)
+				.type(MessageType.JOIN)
+				.build();
+		
 		ResponseEntity<Long> response = restTemplate
-				.getForEntity("/getId", Long.class);
+				.postForEntity("/register", senderMessage, Long.class);
 		Long senderId = response.getBody();
 		
 		String receiver = "receiver";
+		ChatMessage receiverMessage = ChatMessage.builder()
+				.sender(sender)
+				.type(MessageType.JOIN)
+				.build();
 		response = restTemplate
-				.getForEntity("/getId", Long.class);
+				.postForEntity("/register", receiverMessage, Long.class);
 		Long receiverId = response.getBody();
 		
 		this.stompClient.setMessageConverter(new MappingJackson2MessageConverter());
