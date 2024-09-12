@@ -6,15 +6,6 @@ var registerText = document.querySelector('#name');
 
 var username = null;
 
-// zmienić na serwerze
-// dodawanie użytkownika będzie na http
-// on będzie zwracał sobie czy jest git
-// będzie WebSocketowe na powiadomienie innych, że użytkownik dołączył
-// tu będzie: call na dodanie użytkownika tak długo, aż ID będzie poprawne
-// potem call na otrzymanie ID
-// potem subskrypcja i wysłanie do brockera, że on został dodany, wtedy inni użytkownicy zostaną powiadomieni
-// coś takiego właśnie
-
 async function connect() {
     var uniqueId = null;
     username = registerText.value.trim();
@@ -47,5 +38,3 @@ async function connect() {
     }
     
 }
-//window.onload = connect;
-//registerForm.addEventListener('submit', connect, true);
