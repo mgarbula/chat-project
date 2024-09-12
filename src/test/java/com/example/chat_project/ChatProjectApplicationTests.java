@@ -114,6 +114,29 @@ class ChatProjectApplicationTests {
 	
 	@Test
 	@DirtiesContext
+	void shouldRemoveUserFromSession() {
+		String newUsername = "NewUser";
+		
+		ChatMessage newUserMessage = ChatMessage.builder()
+				.sender(newUsername)
+				.type(MessageType.JOIN)
+				.build();
+		ResponseEntity<Long> response = restTemplate
+				.postForEntity("/register", newUserMessage, Long.class);
+		
+		newUserMessage = ChatMessage.builder()
+				.sender(newUsername)
+				.type(MessageType.LEAVE)
+				.build();
+		ResponseEntity<Void> responseEntity = restTemplate
+				.postForEntity("/logout", newUserMessage, Void.class);
+		
+		assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.OK);
+		assertThat(repository.findUserByUsername("NewUser")).isNull();
+	}
+	
+	@Test
+	@DirtiesContext
 	void shouldNotAddUserWithExistingUsername() {
 		String newUsername = "user";
 		

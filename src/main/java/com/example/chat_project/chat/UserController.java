@@ -14,18 +14,17 @@ import java.util.List;
 import java.util.Random;
 
 @RestController
-@RequestMapping("/register")
-public class AddUserController {
+@RequestMapping
+public class UserController {
     
     private final UserRepository userRepository;
     private List<Long> ids = new ArrayList<>();
     
-    public AddUserController(UserRepository userRepository) {
+    public UserController(UserRepository userRepository) {
         this.userRepository = userRepository;
     }
     
-    
-    @PostMapping
+    @PostMapping("/register")
     private ResponseEntity<Long> addUser(@RequestBody ChatMessage message) {
         String sender = message.getSender();
         if (userRepository.findUserByUsername(sender) == null) {
@@ -34,6 +33,18 @@ public class AddUserController {
             return ResponseEntity.ok(id);
         }
         return ResponseEntity.status(HttpStatus.CONFLICT).build();
+    }
+    
+    @PostMapping("/logout")
+    private ResponseEntity<Void> logout(@RequestBody ChatMessage message) {
+        String sender = message.getSender();
+        ChatUser user = userRepository.findUserByUsername(sender);
+        if (user != null) {
+            userRepository.delete(user);
+            ids.remove(user.getId());
+            return ResponseEntity.ok().build();
+        }
+        return ResponseEntity.notFound().build();
     }
     
     private Long generateId() {
