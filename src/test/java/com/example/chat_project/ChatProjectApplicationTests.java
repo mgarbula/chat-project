@@ -146,7 +146,7 @@ class ChatProjectApplicationTests {
 		
 		await()
 				.atMost(5, TimeUnit.SECONDS)
-				.untilAsserted(() -> assertEquals("NewUser2 joined!", userJoinedQueue.poll()));
+				.untilAsserted(() -> assertEquals("NewUser2", userJoinedQueue.poll()));
 	}
 	
 	@Test

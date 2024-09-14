@@ -33,7 +33,7 @@ public class ChatController {
     @MessageMapping("/chat.addUser/{id}")
     @SendTo("/topic/userJoined")
     public String userJoined(@Payload ChatMessage message) {
-        return message.getSender() + " joined!";
+        return message.getSender();
     }
     
     @MessageMapping("/chat.sendMessage/{idFrom}")
