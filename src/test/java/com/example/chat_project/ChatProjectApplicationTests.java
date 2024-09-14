@@ -15,6 +15,7 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
+import org.springframework.messaging.converter.StringMessageConverter;
 import org.springframework.messaging.simp.stomp.StompFrameHandler;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
@@ -44,12 +45,14 @@ class ChatProjectApplicationTests {
 	@LocalServerPort
 	private Integer port;
 	private WebSocketStompClient stompClient;
+	private WebSocketStompClient stompStringClient;
 	private String url;
 	private BlockingQueue<ChatStatus> queue = new ArrayBlockingQueue<>(1);
 	private final String topicPublic = "/topic/public";
 	private final String addUser = "/app/chat.addUser";
 	private final String sendMessage = "/app/chat.sendMessage";
 	private BlockingQueue<ChatMessage> messagesQueue = new ArrayBlockingQueue<>(1);
+	private BlockingQueue<String> userJoinedQueue = new ArrayBlockingQueue<>(1);
 	
 	@Autowired
 	private UserRepository repository;
@@ -114,6 +117,40 @@ class ChatProjectApplicationTests {
 	
 	@Test
 	@DirtiesContext
+	void shouldInformAboutJoin() throws ExecutionException, InterruptedException, TimeoutException {
+		this.stompClient.setMessageConverter(new MappingJackson2MessageConverter());
+		
+		this.stompStringClient = new WebSocketStompClient( new SockJsClient(
+				List.of(new WebSocketTransport(new StandardWebSocketClient()))
+		));
+		this.stompStringClient.setMessageConverter(new StringMessageConverter());
+		
+		StompSession session = createStringSession();
+		StompSession.Subscription subs = session.subscribe("/topic/userJoined", new UserJoinedStompFrameHandler());
+		System.out.println(subs.getSubscriptionHeaders());
+		
+		String newUsername2 = "NewUser2";
+		ChatMessage newUserMessage2 = ChatMessage.builder()
+				.sender(newUsername2)
+				.type(MessageType.JOIN)
+				.build();
+		
+		ResponseEntity<Long> response = restTemplate.
+				postForEntity("/register", newUserMessage2, Long.class);
+		Long id = response.getBody();
+		
+		StompSession session2 = createSession();
+		StompHeaders headers = new StompHeaders();
+		headers.setDestination("/app/chat.addUser/" + id);
+		session2.send(headers, newUserMessage2);
+		
+		await()
+				.atMost(5, TimeUnit.SECONDS)
+				.untilAsserted(() -> assertEquals("NewUser2 joined!", userJoinedQueue.poll()));
+	}
+	
+	@Test
+	@DirtiesContext
 	void shouldRemoveUserFromSession() {
 		String newUsername = "NewUser";
 		
@@ -166,7 +203,7 @@ class ChatProjectApplicationTests {
 		
 		String receiver = "receiver";
 		ChatMessage receiverMessage = ChatMessage.builder()
-				.sender(sender)
+				.sender(receiver)
 				.type(MessageType.JOIN)
 				.build();
 		response = restTemplate
@@ -191,7 +228,6 @@ class ChatProjectApplicationTests {
 		headers.add("destinationId", Long.toString(receiverId));
 		session.send(headers, message);
 		
-		Thread.sleep(1000);
 		await()
 				.atMost(1, TimeUnit.SECONDS)
 				.untilAsserted(() -> assertEquals("Hello!", messagesQueue.poll().getContent()));
@@ -205,6 +241,13 @@ class ChatProjectApplicationTests {
 
 	private StompSession createSession() throws ExecutionException, InterruptedException, TimeoutException {
 		return this.stompClient
+				.connectAsync(url, new StompSessionHandlerAdapter() {
+				})
+				.get(1, TimeUnit.SECONDS);
+	}
+	
+	private StompSession createStringSession() throws ExecutionException, InterruptedException, TimeoutException {
+		return this.stompStringClient
 				.connectAsync(url, new StompSessionHandlerAdapter() {
 				})
 				.get(1, TimeUnit.SECONDS);
@@ -233,6 +276,19 @@ class ChatProjectApplicationTests {
 		@Override
 		public void handleFrame(StompHeaders headers, Object payload) {
 			messagesQueue.add((ChatMessage) payload);
+		}
+	}
+	
+	private class UserJoinedStompFrameHandler implements StompFrameHandler {
+		
+		@Override
+		public Type getPayloadType(StompHeaders headers) {
+			return String.class;
+		}
+		
+		@Override
+		public void handleFrame(StompHeaders headers, Object payload) {
+			userJoinedQueue.add((String) payload);
 		}
 	}
 

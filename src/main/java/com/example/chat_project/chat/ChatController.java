@@ -29,18 +29,11 @@ public class ChatController {
         this.userRepository = userRepository;
         this.messageRepository = messageRepository;
     }
-
+    
     @MessageMapping("/chat.addUser/{id}")
-    @SendTo("/topic/public/{id}")
-    public ChatStatus addUser(@Payload ChatMessage message, @DestinationVariable("id") Long id, 
-                              SimpMessageHeaderAccessor headerAccessor) {
-        String sender = message.getSender();
-        if (userRepository.findUserByUsername(sender) == null) {
-            headerAccessor.getSessionAttributes().put("username", sender);
-            userRepository.save(new ChatUser(sender, id));
-            return ChatStatus.USER_ADDED;
-        }
-        return ChatStatus.USER_NAME_INVALID;
+    @SendTo("/topic/userJoined")
+    public String userJoined(@Payload ChatMessage message) {
+        return message.getSender() + " joined!";
     }
     
     @MessageMapping("/chat.sendMessage/{idFrom}")
