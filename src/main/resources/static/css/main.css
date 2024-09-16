@@ -107,6 +107,23 @@ html, body {
     margin: 0;
 }
 
+.user-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    cursor: pointer;
+}
+
+.user-item span.nbr-msg {
+    margin-left: 10px;
+    background-color: #f8fa6f;
+    color: white;
+    padding: 5px;
+    width: 10px;
+    border-radius: 50%;
+    height: 10px;
+}
+
 .chat-area {
     flex: 3;
     display: flex;

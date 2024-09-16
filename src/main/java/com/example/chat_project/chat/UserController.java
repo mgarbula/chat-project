@@ -4,9 +4,13 @@ import com.example.chat_project.user.ChatUser;
 import com.example.chat_project.user.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.handler.annotation.DestinationVariable;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.ArrayList;
@@ -45,6 +49,18 @@ public class UserController {
             return ResponseEntity.ok().build();
         }
         return ResponseEntity.notFound().build();
+    }
+    
+    @RequestMapping(value="getUser", method= RequestMethod.GET)
+    private ResponseEntity<Long> getUserId(@RequestParam("username") String username) {
+        ChatUser user = userRepository.findUserByUsername(username);
+        return ResponseEntity.ok(user.getRandomId());
+    }
+    
+    @GetMapping("/getUsers")
+    private ResponseEntity<ArrayList<ChatUser>> getUsers() {
+        ArrayList<ChatUser> users = userRepository.findAll();
+        return ResponseEntity.ok(users);
     }
     
     private Long generateId() {

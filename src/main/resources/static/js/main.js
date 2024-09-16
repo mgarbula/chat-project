@@ -6,13 +6,18 @@ var registerText = document.querySelector('#name');
 var chatPage = document.querySelector('#chat-page');
 var connectedUser = document.querySelector('#connected-user');
 var logout = document.querySelector('#logout');
+var chatUsers = document.querySelector('#chat-users');
 
-var username = null;
 const urlRegister = 'http://localhost:8080/register';
 const urlLogout = 'http://localhost:8080/logout';
+const urlGetId = 'http://localhost:8080/getUser?';
+const urlGetUsers = 'http://localhost:8080/getUsers'
+
+var username = null;
+var uniqueId = null;
+var stompClient = null;
 
 async function connect() {
-    var uniqueId = null;
     username = registerText.value.trim();
     
     if (username.length < 3) {
@@ -33,6 +38,11 @@ async function connect() {
             if (response.ok) {
                 const json = await response.json();
                 uniqueId = json.id;
+
+                const socket = new SockJS('/ws');
+                stompClient = Stomp.over(socket);
+                stompClient.connect({}, onConnected);
+
                 console.log('success ', uniqueId);
                 registerPage.classList.add('hidden');
                 chatPage.classList.remove('hidden');
@@ -48,6 +58,52 @@ async function connect() {
         } catch (error) {
             console.error('Error: ', error);
         }
+    }
+}
+
+async function getConnectedUsers() {
+    try {
+        const response = await fetch(urlGetUsers);
+        if (response.ok) {
+            const json = await response.json();
+            json.forEach(function (user) {
+                if (user.username !== username) {
+                    appendUserElement(user.username, user.randomId, chatUsers);
+                }
+            })
+        } else {
+            console.error('Error ', response.statusText);
+        }
+    } catch (error) {
+        console.error('Error ', error);
+    }
+}
+
+function onConnected() {
+    //stompClient.subscribe(`/topic/public/${uniqueId}`, onMessageReceived);
+    stompClient.send(`/app/chat.addUser/${uniqueId}`, {}, JSON.stringify({sender: username, type: 'JOIN'}));
+    stompClient.subscribe('/topic/userJoined', onUserJoined);
+    getConnectedUsers();
+}
+
+async function onUserJoined(payload) {
+    if (payload.body !== username) {
+        //alert(payload.body, ' joined!');
+        try {
+            const response = await fetch(urlGetId + new URLSearchParams({
+                username: payload.body
+            }).toString());
+            if (response.ok) {
+                const json = await response.json();
+                userId = json;
+                console.log('userId ', userId);
+            } else {
+                console.error('Error ', response.statusText);
+            }
+        } catch (error) {
+            console.error('Error ', error);
+        }
+        appendUserElement(payload.body, userId, chatUsers);
     }
 }
 
@@ -72,6 +128,26 @@ async function onLogout() {
     } catch (error) {
         console.error('Error: ', error);
     }
+}
+
+function appendUserElement(username, userId, connectedUsersList) {
+    const listItem = document.createElement('li');
+    listItem.classList.add('user-item');
+    listItem.id = userId;
+
+    const usernameSpan = document.createElement('span');
+    usernameSpan.textContent = username;
+
+    const receivedMsg = document.createElement('span');
+    receivedMsg.textContent = '0';
+    receivedMsg.classList.add('nbr-msg', 'hidden');
+
+    listItem.appendChild(usernameSpan);
+    listItem.appendChild(receivedMsg);
+
+    //listItem.addEventListener('click', userItemClick);
+
+    connectedUsersList.appendChild(listItem);
 }
 
 logout.addEventListener('click', onLogout, true);
