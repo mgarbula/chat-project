@@ -60,7 +60,7 @@ public class UserController {
     @GetMapping("/getUsers")
     private ResponseEntity<ArrayList<ChatUser>> getUsers() {
         ArrayList<ChatUser> users = userRepository.findAll();
-        return ResponseEntity.ok(users);
+        return ResponseEntity.ok(users); 
     }
     
     private Long generateId() {

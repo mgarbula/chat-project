@@ -51,5 +51,14 @@ public class ChatController {
         messageRepository.save(messageToSave);
         return ChatStatus.MESSAGE_SENT;
     }
+    
+    @MessageMapping("/chat.disconnect/{id}")
+    @SendTo("/topic/userDisconnected")
+    public Long userDisconnected(@Payload ChatMessage message, @DestinationVariable("id") Long id) {
+        if (message.getType().equals(MessageType.LEAVE)) {
+            return id;
+        }
+        return -1L;
+    }
 
 }

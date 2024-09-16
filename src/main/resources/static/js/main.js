@@ -7,6 +7,7 @@ var chatPage = document.querySelector('#chat-page');
 var connectedUser = document.querySelector('#connected-user');
 var logout = document.querySelector('#logout');
 var chatUsers = document.querySelector('#chat-users');
+var messageArea = document.querySelector('#message-area');
 
 const urlRegister = 'http://localhost:8080/register';
 const urlLogout = 'http://localhost:8080/logout';
@@ -37,7 +38,7 @@ async function connect() {
             
             if (response.ok) {
                 const json = await response.json();
-                uniqueId = json.id;
+                uniqueId = json;
 
                 const socket = new SockJS('/ws');
                 stompClient = Stomp.over(socket);
@@ -80,9 +81,10 @@ async function getConnectedUsers() {
 }
 
 function onConnected() {
-    //stompClient.subscribe(`/topic/public/${uniqueId}`, onMessageReceived);
     stompClient.send(`/app/chat.addUser/${uniqueId}`, {}, JSON.stringify({sender: username, type: 'JOIN'}));
+    stompClient.subscribe(`/topic/public/${uniqueId}`, onMessageReceived);
     stompClient.subscribe('/topic/userJoined', onUserJoined);
+    stompClient.subscribe('/topic/userDisconnected', onUserDisconnected);
     getConnectedUsers();
 }
 
@@ -107,6 +109,19 @@ async function onUserJoined(payload) {
     }
 }
 
+function onUserDisconnected(payload) {
+    const disconnectedUserID = payload.body;
+    if (payload !== uniqueId) {
+        var users = chatUsers.getElementsByTagName("li");
+        for (var i = 0; i < users.length; ++i) {
+            if (users[i].id === disconnectedUserID) {
+                chatUsers.removeChild(users[i]);
+                break;
+            }
+        }
+    }
+}
+
 async function onLogout() {
     try {
         const response = await fetch(urlLogout, {
@@ -121,9 +136,13 @@ async function onLogout() {
         });
 
         if (response.ok) {
+            stompClient.send(`/app/chat.disconnect/${uniqueId}`, {}, JSON.stringify({sender: username, type: 'LEAVE'}));
+            stompClient.disconnect();
             registerPage.classList.remove('hidden');
             alert('Logout successful');
             chatPage.classList.add('hidden');
+            chatUsers.innerHTML = '';
+            messageArea.innerHTML = '';
         }
     } catch (error) {
         console.error('Error: ', error);
