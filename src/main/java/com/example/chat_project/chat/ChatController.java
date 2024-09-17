@@ -1,9 +1,7 @@
 package com.example.chat_project.chat;
 
-import com.example.chat_project.chat_status.ChatStatus;
 import com.example.chat_project.message.Message;
 import com.example.chat_project.message.MessageRepository;
-import com.example.chat_project.user.ChatUser;
 import com.example.chat_project.user.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
