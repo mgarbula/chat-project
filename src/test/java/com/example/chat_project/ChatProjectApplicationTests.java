@@ -2,7 +2,6 @@ package com.example.chat_project;
 
 import com.example.chat_project.chat.ChatMessage;
 import com.example.chat_project.chat.MessageType;
-import com.example.chat_project.chat_status.ChatStatus;
 import com.example.chat_project.message.MessageRepository;
 import com.example.chat_project.user.ChatUser;
 import com.example.chat_project.user.UserRepository;
@@ -47,7 +46,6 @@ class ChatProjectApplicationTests {
 	private WebSocketStompClient stompClient;
 	private WebSocketStompClient stompStringClient;
 	private String url;
-	private BlockingQueue<ChatStatus> queue = new ArrayBlockingQueue<>(1);
 	private final String topicPublic = "/topic/public";
 	private final String addUser = "/app/chat.addUser";
 	private final String sendMessage = "/app/chat.sendMessage";
@@ -213,7 +211,6 @@ class ChatProjectApplicationTests {
 		this.stompClient.setMessageConverter(new MappingJackson2MessageConverter());
 		StompSession session = createSession();
 		
-		session.subscribe(topicPublic + "/" + senderId, new ChatStatusStompFrameHandler());
 		session.subscribe(topicPublic + "/" + receiverId,
 				new ChatStompFrameHandler());
 		
@@ -232,10 +229,6 @@ class ChatProjectApplicationTests {
 				.atMost(1, TimeUnit.SECONDS)
 				.untilAsserted(() -> assertEquals("Hello!", messagesQueue.poll().getContent()));
 		
-		await()
-				.atMost(1, TimeUnit.SECONDS)
-				.untilAsserted(() -> assertEquals(ChatStatus.MESSAGE_SENT, queue.poll()));
-		
 		assertThat(messageRepository.findAllBySenderAndReceiver(senderId, receiverId).size()).isEqualTo(1);
 	}
 
@@ -251,19 +244,6 @@ class ChatProjectApplicationTests {
 				.connectAsync(url, new StompSessionHandlerAdapter() {
 				})
 				.get(1, TimeUnit.SECONDS);
-	}
-
-	private class ChatStatusStompFrameHandler implements StompFrameHandler {
-
-		@Override
-		public Type getPayloadType(StompHeaders headers) {
-			return ChatStatus.class;
-		}
-
-		@Override
-		public void handleFrame(StompHeaders headers, Object payload) {
-			queue.add((ChatStatus) payload);
-		}
 	}
 	
 	private class ChatStompFrameHandler implements StompFrameHandler {

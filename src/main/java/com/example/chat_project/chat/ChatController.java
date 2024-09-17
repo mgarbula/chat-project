@@ -37,8 +37,7 @@ public class ChatController {
     }
     
     @MessageMapping("/chat.sendMessage/{idFrom}")
-    @SendTo("/topic/public/{idFrom}")
-    public ChatStatus sendMessage(@Payload ChatMessage message, @DestinationVariable("idFrom") Long id,
+    public void sendMessage(@Payload ChatMessage message, @DestinationVariable("idFrom") Long id,
                             SimpMessageHeaderAccessor headerAccessor) {
         Long idTo = Long.valueOf(headerAccessor.getNativeHeader("destinationId").get(0));
         messageTemplate.convertAndSend("/topic/public/" + idTo, message);
@@ -49,7 +48,6 @@ public class ChatController {
                 .times(new Timestamp(Instant.now().toEpochMilli()))
                 .build();
         messageRepository.save(messageToSave);
-        return ChatStatus.MESSAGE_SENT;
     }
     
     @MessageMapping("/chat.disconnect/{id}")
