@@ -141,7 +141,7 @@ html, body {
 }
 
 .message-input {
-    margin-bottom: 5px;
+    margin-top: auto;
     display: flex;
 }
 
@@ -164,4 +164,32 @@ html, body {
 
 a.logout {
     color: black;
+}
+
+.message {
+    margin-bottom: 5px;
+    border-radius: 5px;
+}
+
+.message p {
+    padding: 0 12px;
+    border-radius: 15px;
+    word-wrap: break-word;
+}
+
+.sender {
+    background-color: #3498db;
+    color: #fff;
+    align-self: flex-end;
+}
+
+.receiver {
+    background-color: #ecf0f1;
+    color: #333;
+    align-self: flex-start;
+}
+
+.current-user {
+    margin-bottom: auto;
+    display: flex;
 }
